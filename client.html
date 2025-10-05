@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sidekick AI Character - WebRTC Video Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 530px;
+            width: 100%;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 1.6em;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .status-indicator.disconnected {
+            background-color: #ff7675;
+        }
+
+        .status-indicator.connecting {
+            background-color: #fdcb6e;
+            animation: blink 1s infinite;
+        }
+
+        .status-indicator.connected {
+            background-color: #55efc4;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            margin-top: 0;
+            justify-content: center;
+            width: 100%;
+            max-width: 450px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            flex: 1;
+        }
+
+        #connectBtn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        #connectBtn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        #connectBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #muteBtn {
+            background: #74b9ff;
+            color: white;
+        }
+
+        #muteBtn.muted {
+            background: #ff7675;
+        }
+
+        #muteBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(116, 185, 255, 0.4);
+        }
+
+        #videoContainer {
+            display: none;
+            width: 450px;
+            height: 800px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 4px;
+            position: relative;
+            margin: 0 auto 15px auto;
+        }
+
+        #videoContainer.active {
+            display: block;
+        }
+
+        #remoteVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            border-radius: 11px;
+            background: #000;
+        }
+
+        .video-label {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="statusIndicator" class="status-indicator disconnected"></div>
+        <h1>🤖 Sidekick AI Character</h1>
+
+        <div id="videoContainer" class="active">
+            <video id="remoteVideo" autoplay playsinline></video>
+            <div class="video-label">AI Character Video</div>
+        </div>
+
+        <div class="controls">
+            <button id="connectBtn" onclick="toggleConnection()">
+                Connect
+            </button>
+            <button id="muteBtn" onclick="toggleMute()" disabled>
+                Mute Microphone
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let pc = null;
+        let localStream = null;
+        let isConnected = false;
+        let isMuted = false;
+
+        const WS_URL = 'ws://127.0.0.1:8080';
+
+        const statusIndicator = document.getElementById('statusIndicator');
+        const connectBtn = document.getElementById('connectBtn');
+        const muteBtn = document.getElementById('muteBtn');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const videoContainer = document.getElementById('videoContainer');
+
+        function updateStatus(status, className) {
+            statusIndicator.className = `status-indicator ${className}`;
+            statusIndicator.title = status;
+        }
+
+
+        async function connect() {
+            try {
+                updateStatus('Connecting...', 'connecting');
+
+                // Connect to WebSocket
+                ws = new WebSocket(WS_URL);
+
+                ws.onopen = async () => {
+                    console.log('WebSocket connected');
+                    updateStatus('Initializing WebRTC...', 'connecting');
+
+                    // Get user media
+                    localStream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        },
+                        video: false
+                    });
+
+                    // Create peer connection
+                    pc = new RTCPeerConnection({
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' }
+                        ]
+                    });
+
+                    // Add local stream
+                    localStream.getTracks().forEach(track => {
+                        pc.addTrack(track, localStream);
+                    });
+
+                    // Add video transceiver to receive video from server
+                    pc.addTransceiver('video', { direction: 'recvonly' });
+                    console.log('Added video transceiver for receiving video from server');
+
+                    // Handle remote stream
+                    pc.ontrack = (event) => {
+                        console.log('Received remote track:', event.track.kind);
+
+                        // For video + audio stream
+                        if (event.streams && event.streams[0]) {
+                            if (!remoteVideo.srcObject) {
+                                remoteVideo.srcObject = event.streams[0];
+                                console.log('Set remote stream to video element');
+                            }
+                        }
+
+                        if (event.track.kind === 'video') {
+                            videoContainer.style.display = 'block';
+                            console.log('Video track received - showing video container');
+                        } else if (event.track.kind === 'audio') {
+                            console.log('Audio track received');
+                        }
+                    };
+
+                    // Create offer
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+
+                    // Send offer
+                    ws.send(JSON.stringify({
+                        type: offer.type,
+                        sdp: offer.sdp
+                    }));
+                };
+
+                ws.onmessage = async (event) => {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'answer') {
+                        // Set remote description
+                        await pc.setRemoteDescription(new RTCSessionDescription({
+                            type: data.type,
+                            sdp: data.sdp
+                        }));
+
+                        isConnected = true;
+                        updateStatus('Connected', 'connected');
+                        connectBtn.textContent = 'Disconnect';
+                        muteBtn.disabled = false;
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    updateStatus('Connection error', 'disconnected');
+                };
+
+                ws.onclose = () => {
+                    console.log('WebSocket disconnected');
+                    disconnect();
+                };
+
+            } catch (error) {
+                console.error('Connection error:', error);
+                updateStatus('Failed to connect', 'disconnected');
+                disconnect();
+            }
+        }
+
+        function disconnect() {
+            isConnected = false;
+
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+
+            if (pc) {
+                pc.close();
+                pc = null;
+            }
+
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+
+            updateStatus('Disconnected', 'disconnected');
+            connectBtn.textContent = 'Connect';
+            muteBtn.disabled = true;
+            // Keep video container visible but clear the video stream
+            remoteVideo.srcObject = null;
+        }
+
+        function toggleConnection() {
+            if (isConnected) {
+                disconnect();
+            } else {
+                connect();
+            }
+        }
+
+        function toggleMute() {
+            if (!localStream) return;
+
+            const audioTrack = localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                isMuted = !isMuted;
+                audioTrack.enabled = !isMuted;
+                muteBtn.textContent = isMuted ? 'Unmute Microphone' : 'Mute Microphone';
+                muteBtn.classList.toggle('muted', isMuted);
+            }
+        }
+
+
+        // Request microphone permission on page load
+        window.addEventListener('load', async () => {
+            try {
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log('Microphone permission granted');
+            } catch (error) {
+                console.log('Microphone permission denied or not available');
+            }
+        });
+    </script>
+</body>
+</html>
