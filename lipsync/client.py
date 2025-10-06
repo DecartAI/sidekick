@@ -80,7 +80,6 @@ class DecartLipsyncClient:
         def _decode_video_frame_sync(video_frame: bytes) -> bytes:
             nparr = np.frombuffer(video_frame, np.uint8)
             video_frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            video_frame = cv2.cvtColor(video_frame, cv2.COLOR_BGR2RGB)
             return video_frame
 
         return await asyncio.to_thread(_decode_video_frame_sync, video_frame)
