@@ -26,7 +26,7 @@ Sidekick lets you have face-to-face video conversations with AI characters. Unli
 1. **Clone and install**
 
 ```bash
-git clone https://github.com/yourusername/sidekick-os.git
+git clone https://github.com/DecartAI/sidekick.git
 cd sidekick
 python -m venv .venv
 source .venv/bin/activate
