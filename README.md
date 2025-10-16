@@ -14,16 +14,27 @@ Sidekick lets you have face-to-face video conversations with AI characters. Unli
 - **Low Latency** - Optimized pipeline for natural conversation flow
 - **Smart Interruptions** - Handles conversation turns naturally with VAD and smart turn detection
 
+## Requirements
+
+- Python 3.10+
+- API keys for Groq, ElevenLabs, and Decart
+- A character video file (static face video works best)
+- Decent internet connection for real-time streaming
+
 ## Quick Start
 
 1. **Clone and install**
+
 ```bash
-git clone https://github.com/yourusername/sidekick-os.git
-cd sidekick-os
+git clone https://github.com/DecartAI/sidekick.git
+cd sidekick
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
 2. **Set up your API keys**
+
 ```bash
 cp .env.example .env
 # Add your API keys:
@@ -33,6 +44,7 @@ cp .env.example .env
 ```
 
 3. **Run with a character**
+
 ```bash
 # Talk to Cleopatra
 python sidekick.py --character cleopatra.yaml
@@ -82,13 +94,6 @@ Options:
   --audio-sample-rate Audio sample rate (default: 16000)
 ```
 
-## Requirements
-
-- Python 3.10+
-- API keys for Groq, ElevenLabs, and Decart
-- A character video file (static face video works best)
-- Decent internet connection for real-time streaming
-
 ## License
 
 MIT
@@ -99,4 +104,4 @@ PRs welcome! Please check existing issues first.
 
 ---
 
-*Built with ❤️ for more natural AI interactions*
+_Built with ❤️ for more natural AI interactions_
