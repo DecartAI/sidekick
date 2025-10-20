@@ -101,8 +101,7 @@ class DecartLipsyncClient:
         logger.info("Configuration sent")
         response = await self._recv()
         if not isinstance(response, LipsyncConfigAckMessage):
-            logger.error(f"Configuration not acknowledged by server: {response}")
-            raise Exception("Configuration not acknowledged by server")
+            raise Exception(f"Configuration not acknowledged by server: {response}")
         logger.info("Configuration acknowledged")
 
         self._response_handling_task = asyncio.create_task(self._handle_server_responses())
@@ -110,7 +109,7 @@ class DecartLipsyncClient:
         logger.info("Connected to lipsync server")
 
     async def disconnect(self):
-        if self._websocket:
+        if self._websocket is not None:
             await self._websocket.close()
             self._websocket = None
 

@@ -10,6 +10,9 @@ from pipecat.frames.frames import (
     BotStartedSpeakingFrame,
     BotStoppedSpeakingFrame,
     InterruptionFrame,
+    StartFrame,
+    StopFrame,
+    CancelTaskFrame,
 )
 from pipecat.processors.frame_processor import FrameProcessor, FrameDirection
 
@@ -30,12 +33,15 @@ class DecartLipsyncService(FrameProcessor):
         self._lipsynced_media_consumer_task: Optional[asyncio.Task] = None
         self._video_size: Tuple[int, int] = (0, 0)
 
-    async def setup(self, setup):
-        await super().setup(setup)
-
+    async def _setup(self):
         # Initialize connection
-        await self._lipsync_client.connect()
-        self._lipsynced_media_consumer_task = asyncio.create_task(self._consume_lipsynced_media())
+        try:
+            await self._lipsync_client.connect()
+        except Exception as e:
+            logger.error(f"Error connecting to lipsync API: {e}")
+            await self.push_frame(CancelTaskFrame(), FrameDirection.UPSTREAM)
+        else:
+            self._lipsynced_media_consumer_task = asyncio.create_task(self._consume_lipsynced_media())
 
     async def cleanup(self):
         await super().cleanup()
@@ -55,7 +61,9 @@ class DecartLipsyncService(FrameProcessor):
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
 
-        if isinstance(frame, BotStartedSpeakingFrame):
+        if isinstance(frame, StartFrame):
+            await self._setup()
+        elif isinstance(frame, BotStartedSpeakingFrame):
             self._bot_is_talking = True
         elif isinstance(frame, BotStoppedSpeakingFrame):
             self._bot_is_talking = False

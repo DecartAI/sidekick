@@ -169,12 +169,12 @@ class SidekickWebRTCServer:
 
         @transport.event_handler("on_client_disconnected")
         async def on_client_disconnected(_transport, _client):
-            logger.info("Client disconnected")
+            logger.info("Client disconnected, cleaning up pipeline")
             await self.cleanup()
 
         @transport.event_handler("on_connection_error")
         async def on_connection_error(_transport, error):
-            logger.error(f"WebRTC Connection error: {error}")
+            logger.error(f"WebRTC Connection error: {error}, cleaning up pipeline")
             await self.cleanup()
 
         # Run the pipeline
@@ -184,8 +184,8 @@ class SidekickWebRTCServer:
 
     async def cleanup(self):
         """Clean up resources"""
-        if self.runner_task:
-            self.runner_task.cancel()
+        if self.pipeline_task:
+            await self.pipeline_task.cancel()
             try:
                 await self.runner_task
             except asyncio.CancelledError:
@@ -196,7 +196,6 @@ class SidekickWebRTCServer:
             # SmallWebRTCConnection doesn't have a public close method in new version
             # It's cleaned up automatically when the connection goes out of scope
             self.rtc_connection = None
-        logger.info("Cleanup completed")
 
     async def handle_client(self, websocket):
         """Handle a WebSocket client connection"""
