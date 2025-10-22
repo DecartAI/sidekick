@@ -186,11 +186,13 @@ class SidekickWebRTCServer:
         """Clean up resources"""
         if self.pipeline_task:
             await self.pipeline_task.cancel()
+
+        if self.runner_task:
             try:
                 await self.runner_task
+                self.runner_task = None
             except asyncio.CancelledError:
                 pass
-            self.runner_task = None
 
         if self.rtc_connection:
             # SmallWebRTCConnection doesn't have a public close method in new version

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sidekick AI Character - WebRTC Video Chat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -12,8 +13,8 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #171717;
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -22,9 +23,6 @@
         }
 
         .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             max-width: 530px;
             width: 100%;
             padding: 25px;
@@ -34,17 +32,22 @@
             position: relative;
         }
 
-        h1 {
-            color: #333;
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             margin-bottom: 10px;
+        }
+
+        h1 {
+            color: #ffffff;
+            margin: 0;
             text-align: center;
             font-size: 1.6em;
+            font-weight: 400;
         }
 
         .status-indicator {
-            position: absolute;
-            top: 15px;
-            right: 15px;
             width: 12px;
             height: 12px;
             border-radius: 50%;
@@ -81,21 +84,20 @@
         }
 
         button {
-            padding: 10px 20px;
             border: none;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            flex: 1;
         }
 
         #connectBtn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #4F69DE;
             color: white;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+            width: 180px;
         }
 
         #connectBtn:hover:not(:disabled) {
@@ -109,30 +111,49 @@
         }
 
         #muteBtn {
-            background: #74b9ff;
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.5);
             color: white;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            padding: 0;
+        }
+
+        #muteBtn.visible {
+            display: flex;
         }
 
         #muteBtn.muted {
-            background: #ff7675;
+            background: rgba(255, 118, 117, 0.8);
         }
 
         #muteBtn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(116, 185, 255, 0.4);
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        #muteBtn.muted:hover {
+            background: rgba(255, 118, 117, 1);
         }
 
         #videoContainer {
             display: none;
             width: 450px;
             height: 800px;
-            border-radius: 15px;
+            border-radius: 14px;
             overflow: hidden;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 4px;
+            background: #4F69DE;
+            padding: 3px;
             position: relative;
-            margin: 0 auto 15px auto;
+            margin-top: 8px;
+            margin-bottom: 20px;
         }
 
         #videoContainer.active {
@@ -145,7 +166,7 @@
             object-fit: cover;
             display: block;
             border-radius: 11px;
-            background: #000;
+            background: #212121;
         }
 
         .video-label {
@@ -163,20 +184,25 @@
 </head>
 <body>
     <div class="container">
-        <div id="statusIndicator" class="status-indicator disconnected"></div>
-        <h1>🤖 Sidekick AI Character</h1>
+        <div class="header">
+            <div id="statusIndicator" class="status-indicator disconnected"></div>
+            <h1>Talk to Sidekick</h1>
+        </div>
 
         <div id="videoContainer" class="active">
             <video id="remoteVideo" autoplay playsinline></video>
-            <div class="video-label">AI Character Video</div>
+            <button id="muteBtn" onclick="toggleMute()" title="Toggle Microphone">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path class="mic-on" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path class="mic-on" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                    <path class="mic-off" style="display: none;" d="M19 11c0 1.19-.34 2.3-.9 3.28l-1.23-1.23c.27-.62.43-1.31.43-2.05H19zm-4 .16L9 5.18V5c0-1.66 1.34-3 3-3s3 1.34 3 3v6.16zM4.27 3L21 19.73 19.73 21l-4.19-4.19c-.77.46-1.63.77-2.54.91V21h-2v-3.08c-3.02-.46-5.35-2.87-5.78-5.92H7c.45 2.11 2.2 3.69 4.31 3.93l-1.84-1.84C8.65 13.46 8 12.48 8 11.35v-.15L3 6.27 4.27 3z"/>
+                </svg>
+            </button>
         </div>
 
         <div class="controls">
             <button id="connectBtn" onclick="toggleConnection()">
                 Connect
-            </button>
-            <button id="muteBtn" onclick="toggleMute()" disabled>
-                Mute Microphone
             </button>
         </div>
     </div>
@@ -283,7 +309,7 @@
                         isConnected = true;
                         updateStatus('Connected', 'connected');
                         connectBtn.textContent = 'Disconnect';
-                        muteBtn.disabled = false;
+                        muteBtn.classList.add('visible');
                     }
                 };
 
@@ -324,7 +350,7 @@
 
             updateStatus('Disconnected', 'disconnected');
             connectBtn.textContent = 'Connect';
-            muteBtn.disabled = true;
+            muteBtn.classList.remove('visible');
             // Keep video container visible but clear the video stream
             remoteVideo.srcObject = null;
         }
@@ -344,7 +370,20 @@
             if (audioTrack) {
                 isMuted = !isMuted;
                 audioTrack.enabled = !isMuted;
-                muteBtn.textContent = isMuted ? 'Unmute Microphone' : 'Mute Microphone';
+
+                const micOn = muteBtn.querySelectorAll('.mic-on');
+                const micOff = muteBtn.querySelectorAll('.mic-off');
+
+                if (isMuted) {
+                    micOn.forEach(el => el.style.display = 'none');
+                    micOff.forEach(el => el.style.display = 'block');
+                    muteBtn.title = 'Unmute Microphone';
+                } else {
+                    micOn.forEach(el => el.style.display = 'block');
+                    micOff.forEach(el => el.style.display = 'none');
+                    muteBtn.title = 'Mute Microphone';
+                }
+
                 muteBtn.classList.toggle('muted', isMuted);
             }
         }
