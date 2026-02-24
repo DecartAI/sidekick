@@ -20,12 +20,25 @@ from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 from pipecat.transports.base_transport import TransportParams
 from pipecat.services.groq.llm import GroqLLMService
-from pipecat.services.elevenlabs.tts import ElevenLabsHttpTTSService
+from time import perf_counter
+
+try:
+    from pipecat.services.elevenlabs.tts import (
+        ElevenLabsHttpTTSService,
+        ElevenLabsWsTTSService,
+    )
+    _HAS_WS_TTS = True
+except ImportError:  # pragma: no cover
+    from pipecat.services.elevenlabs.tts import ElevenLabsHttpTTSService  # type: ignore
+
+    ElevenLabsWsTTSService = None  # type: ignore
+    _HAS_WS_TTS = False
 from pipecat.services.whisper.stt import WhisperSTTService, MLXModel, WhisperSTTServiceMLX
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 from pipecat.processors.aggregators.llm_response import LLMAssistantAggregatorParams
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
 from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
+from processors.latency_logger import LatencyLogger
 
 
 logger.remove()
@@ -86,15 +99,21 @@ class SidekickWebRTCServer:
 
         llm = GroqLLMService(api_key=os.getenv("GROQ_API_KEY"), model="llama-3.3-70b-versatile")
 
-        tts = ElevenLabsHttpTTSService(
+        tts_ctor = ElevenLabsWsTTSService if _HAS_WS_TTS and ElevenLabsWsTTSService else ElevenLabsHttpTTSService
+        tts_kwargs = dict(
             api_key=os.getenv("ELEVENLABS_API_KEY"),
             voice_id=self.character_config["voice_id"],
-            model="eleven_turbo_v2_5",
+            model="eleven_v3",
             aiohttp_session=self.aiohttp_session,
-            params=ElevenLabsHttpTTSService.InputParams(
-                optimize_streaming_latency=4,
-            ),
         )
+        input_params = getattr(tts_ctor, "InputParams", None)
+        if input_params is not None:
+            tts_kwargs["params"] = input_params(optimize_streaming_latency=4)
+        tts = tts_ctor(**tts_kwargs)
+        if _HAS_WS_TTS and ElevenLabsWsTTSService:
+            logger.info("Using ElevenLabs WebSocket TTS (eleven_v3)")
+        else:
+            logger.warning("ElevenLabs WebSocket TTS unavailable; falling back to HTTP service")
 
         messages = [
             {
@@ -139,6 +158,7 @@ class SidekickWebRTCServer:
                 context_aggregator.user(),
                 llm,
                 tts,
+                LatencyLogger(),
                 video_streamer,
                 lipsync_processor,
                 transport.output(),

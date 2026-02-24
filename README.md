@@ -98,6 +98,32 @@ Options:
 
 MIT
 
+
+## Performance
+
+### TTS Model
+
+Sidekick now uses **ElevenLabs `eleven_v3`** (GA Feb 2026), which offers lower latency and improved stability over the previous `eleven_turbo_v2_5`.  When the installed version of `pipecat` exposes `ElevenLabsWsTTSService`, the WebSocket transport is used automatically for smaller audio chunk delivery and reduced TTFA (time to first audio).
+
+### Latency Instrumentation
+
+A `LatencyLogger` processor is inserted between TTS and the video streamer.  It logs `[LATENCY]` events you can `grep` to benchmark the pipeline:
+
+```
+[LATENCY] llm_response_start:     1740437584.123
+[LATENCY] tts_first_audio:        1740437584.312  (+189ms from llm_response_start)
+[LATENCY] lipsync_first_frame:    1740437584.521  (+209ms from tts_first_audio)
+[LATENCY] turn_total_to_first_frame: 398ms
+```
+
+To collect a baseline:
+
+```bash
+python sidekick.py --character characters/demo.yaml 2>&1 | grep LATENCY
+```
+
+Compare before/after by swapping `model="eleven_turbo_v2_5"` ↔ `model="eleven_v3"` in `sidekick.py`.
+
 ## Contributing
 
 PRs welcome! Please check existing issues first.
