@@ -98,7 +98,6 @@ Options:
 
 MIT
 
-
 ## Contributing
 
 PRs welcome! Please check existing issues first.
