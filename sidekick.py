@@ -20,7 +20,7 @@ from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 from pipecat.transports.base_transport import TransportParams
 from pipecat.services.groq.llm import GroqLLMService
-from pipecat.services.elevenlabs.tts import ElevenLabsHttpTTSService
+from pipecat.services.elevenlabs.tts import ElevenLabsWsTTSService
 from pipecat.services.whisper.stt import WhisperSTTService, MLXModel, WhisperSTTServiceMLX
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 from pipecat.processors.aggregators.llm_response import LLMAssistantAggregatorParams
@@ -86,14 +86,11 @@ class SidekickWebRTCServer:
 
         llm = GroqLLMService(api_key=os.getenv("GROQ_API_KEY"), model="llama-3.3-70b-versatile")
 
-        tts = ElevenLabsHttpTTSService(
+        tts = ElevenLabsWsTTSService(
             api_key=os.getenv("ELEVENLABS_API_KEY"),
             voice_id=self.character_config["voice_id"],
-            model="eleven_turbo_v2_5",
+            model="eleven_v3",
             aiohttp_session=self.aiohttp_session,
-            params=ElevenLabsHttpTTSService.InputParams(
-                optimize_streaming_latency=4,
-            ),
         )
 
         messages = [
